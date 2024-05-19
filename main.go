@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -23,6 +24,7 @@ const (
 )
 
 type RequestBody struct {
+	Id string `json:"id"`
 	Product_Id float64     `json:"product_id"`
 	Product_Name         string     `json:"product_name"`
 	Retail_Price  float64 `json:"retail_price"`
@@ -82,11 +84,29 @@ func main(){
 				Product_Name: body.Product_Name,
 				Retail_Price: body.Retail_Price,
 			}
+
 			result, err  := product.PostProduct(p, client, c)
 			if err != nil {
 				return c.String(http.StatusBadRequest, err.Error())
 			}
 			return c.JSON(http.StatusOK, result )
+		})
+		e.PATCH("/api/v1/products", func (c echo.Context) error {
+			var body RequestBody
+			err := c.Bind(&body)
+			if err != nil {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+			id,_  := primitive.ObjectIDFromHex(body.Id)
+			filter := bson.D{{"_id", id}}
+			update := bson.D{{"$set", bson.D{{"Retail_Price", 29.10}, {"avg_rating", 4.4}}}}
+				
+			result := product.UpdateProduct(filter, update, client, c)
+			// if err != nil {
+			// 	return c.String(http.StatusBadRequest, err.Error())
+			// }
+			return c.JSON(http.StatusOK, result )
+			
 		})
 
 	go func() {

@@ -51,3 +51,12 @@ func PostProduct(product Product, client *mongo.Client, c echo.Context) (interfa
 			}
 			return productResult.InsertedID, nil 
 }
+func UpdateProduct(filter primitive.D, update primitive.D, client *mongo.Client, c echo.Context) error {
+		consumerDatabase := client.Database("consumer")
+			productCollection := consumerDatabase.Collection("products")
+			productResult, err := productCollection.UpdateOne(context.TODO(), filter, update)
+			if err != nil {
+				panic(err)
+			}
+			return c.JSON(http.StatusOK, productResult) 
+}
