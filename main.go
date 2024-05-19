@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/aspexp/go-mongodb-echo/product"
 	_ "github.com/joho/godotenv/autoload"
 	"github.com/labstack/echo/v4"
 
@@ -20,6 +22,12 @@ const (
 	dbName = "consumer"
 )
 
+type RequestBody struct {
+	Product_Id float64     `json:"product_id"`
+	Product_Name         string     `json:"product_name"`
+	Retail_Price  float64 `json:"retail_price"`
+		
+}
 func main(){
 
 	e := echo.New()
@@ -43,11 +51,43 @@ func main(){
 		if err := client.Database("admin").RunCommand(context.TODO(), bson.D{{"ping", 1}}).Err(); err != nil {
 			panic (err )
 		}
+		// if err := client.Ping(context.TODO(), readpref.Primary()); err != nil {
+		// 	panic(err )
+		// }
 		fmt.Println("Pinged your deployments. You successfully connected to mongoDB!")
 
 		serverPort := ":" + os.Getenv("PORT")
 
-		e.GET("/api/v1/product", )
+		e.GET("/api/v1/listdb", func (c echo.Context) error {
+			database, err := client.ListDatabaseNames(context.TODO(), bson.M{})
+			if err != nil {
+				panic(err)
+			}
+			return c.JSON(http.StatusOK, database)
+		})
+		e.GET("/api/v1/products", func (c echo.Context) error {
+			
+			result := product.GetProduct(client, c)
+			return result
+		})
+		e.POST("/api/v1/products", func (c echo.Context) error {
+			
+			var body RequestBody
+			err := c.Bind(&body)
+			if err != nil {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+			p := product.Product{
+				Product_Id: int64(body.Product_Id),
+				Product_Name: body.Product_Name,
+				Retail_Price: body.Retail_Price,
+			}
+			result, err  := product.PostProduct(p, client, c)
+			if err != nil {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+			return c.JSON(http.StatusOK, result )
+		})
 
 	go func() {
 		e.Logger.Fatal(e.Start(serverPort))
@@ -57,3 +97,4 @@ func main(){
 	<-stop
 	log.Println("shutting down the server")
 }
+
